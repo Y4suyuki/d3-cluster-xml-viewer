@@ -1,13 +1,24 @@
 <!doctype html>
 <html>
   <head>
+    <meta name="viewport" content="width=device-width">
     <script src="files.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
     <link rel="stylesheet" type="text/css" href="chart.css">
   </head>
   <body>
-    <input type="file" onchange="readfile(this.files[0])"/>
+    <div id="header">
+      <h2>&lt;XML viewer&gt;</h2>
+      <input type="file" onchange="readfile(this.files[0])"/>
+    </div>
+    <div id="header-padding">
+    </div>
+
     <div id="output"></div>
     <pre id="raw"></pre>
+
+    <script>
+      window.onscroll = function() { myFunction(); };
+    </script>
   </body>
 </html>

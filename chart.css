@@ -1,7 +1,41 @@
+div#header {
+    width: 100%;
+    padding: 10px 10px;
+    background: black;
+    top: 0px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    position: fixed;
+}
+div#header.scrolled {
+    padding: 2px 2px;
+    background: rgba(1,1,1, .5);
+}
+#header h2 {
+    font-family: Lucida Sans Typewriter, monaco;
+    text-align: center;
+}
+#header h2 {
+    color: white;
+}
+.scrolled h2 {
+    margin: 0px;
+}
+#header-padding {
+    height: 60px;
+}
+#header input {
+    color: white;
+}
 rect:hover {
     cursor: pointer;
 }
 
 .link {
     fill: none;
+}
+
+body {
+    margin: 0px;
 }
