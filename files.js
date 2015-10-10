@@ -1,3 +1,11 @@
+function myFunction() {
+    if (document.body.scrollTop || document.documentElement.scrollTop > 50) {
+        document.getElementById('header').className = 'scrolled';
+    } else {
+        document.getElementById('header').className = '';
+    }
+}
+
 function fileinfo(files) {
     for (var i=0; i < files.length; i++) {
         f = files[i];
@@ -24,14 +32,13 @@ function readfile(f) {
 
 var getBlobURL = (window.URL && URL.createObjectURL.bind(URL)) || (window.webkitURL && webkitURL.createObjectURL.bind(webkitURL)) || window.createObjectURL;
 
-
-
 function callback(data) {
     
     function xml2obj(xml, depth) {
         // convert xml data to javascript object
         // reference http://davidwalsh.name/convert-xml-json
-        var obj = {};        
+
+        var obj = {};
         obj['name'] = xml.nodeName;
         obj['children'] = [];
         // add id to avoid collision
@@ -41,17 +48,48 @@ function callback(data) {
                 obj['children'].push(xml2obj(xml.children[i], depth + 1))
             }
         }
-        return obj;
+        if (xml.nodeType==1) {
+            return obj;
+        } else {
+            return obj.children[0];
+        }
+    }
+
+        function obj2set(tree_lst) {
+        // return set of name of nodes in all tree
+        function obj2set_helper(tree_lst, acc) {
+            acc = acc.concat(tree_lst.map(function(n) { return n.name; }))
+            next_tree_lst = tree_lst.map(function(n) { return n.children ? n.children : [] }).reduce(function(x,y) { return x.concat(y); })
+            if (next_tree_lst.length > 0) {
+                return obj2set_helper(next_tree_lst, acc);
+            } else {
+                return acc;
+            }
+        }
+        return obj2set_helper(tree_lst, [])
     }
     
     new_data = xml2obj(data, depth=0);
     console.log('new processed data');
     console.log(new_data);
-    
+
+    elem_lst = obj2set([new_data]);
+    elem_set = {}
+    var j = 0;
+    for (var i = 0; i < elem_lst.length; i++) {
+        if (!elem_set[elem_lst[i]]) {
+            elem_set[elem_lst[i]] = j;
+            j++;
+        }
+    }
+    console.log('--- elem_set ---');
+    console.log(elem_set);
+
+
     // fold children
     toggleChildren(new_data);
 
-    var draw = chart(new_data);
+    var draw = chart(new_data, elem_set);
     draw();
 
 }
@@ -78,28 +116,37 @@ function toggleChildren(d) {
     }
 }
 
-function chart(data) {
-
+function chart(data, elem_set) {
+    
     // initial parameters
-    var margin = {'top': 20, 'right': 200, 'bottom': 60, 'left': 20};
+    var margin = {'top': 20, 'right': 300, 'bottom': 60, 'left': 20};
     var width = screen.width;
     var height = screen.height;
     var node_radius = 10;
-    var node_fill_color = '#ceeafa';
-    var nodestroke = '#89affe';
+    var node_fill_color = function(d) {
+        // change color in each different element groups
+        return color_scale(elem_set[d.name]);
+    }
+    var nodestroke = function(d) {
+        return color_scale(elem_set[d.name]);
+    }
     var line_stroke_width = 1.5;
     var line_stroke = '#555';
     var duration_ms = 750;
+    var color_scale = d3.scale.category20();
 
     var nodeFill = function(d) {
-        console.log(d.name, d.depth);
-        var color = d._children === undefined || d._children === null || d._children.length == 0 ? 'white' : node_fill_color;
-        console.log(color);
-        return color;
+        return d._children === undefined || d._children === null || d._children.length == 0 ? 'white' : node_fill_color(d);
     }
 
     var nodeCursor = function(d) {
-        return d._children === undefined || d._children === null || d._children.length == 0 ? 'default' : 'pointer';
+        if (d.children !== undefined && d.children !== null && d.children.length > 0) {
+            return 'pointer';
+        } else if (d._children === undefined || d._children === null || d._children.length == 0 ) {
+            return 'default';
+        } else {
+            return 'pointer';
+        }
     }
 
     function draw() {
@@ -136,7 +183,8 @@ function chart(data) {
             .attr('stroke-width', line_stroke_width)
             .attr('class', 'link')
             .attr('d', diagonal)
-            .attr('stroke', line_stroke);
+            .attr('stroke', line_stroke)
+            .attr('opacity', .2);
 
 
         var node = svg.selectAll('.node')
@@ -144,6 +192,7 @@ function chart(data) {
             .enter()
             .append('g')
             .attr('class', 'node')
+            .style('cursor', nodeCursor)
             .attr('transform', function(d) {
                 return 'translate(' + d.y + ',' + d.x + ')';
             })
@@ -156,13 +205,18 @@ function chart(data) {
         node.append('circle')
             .attr('r', node_radius)
             .attr('fill', nodeFill)
-            .attr('stroke', 'dodgerblue')
+            .attr('stroke', nodestroke)
             .attr('stroke-width', 3);
         
         nodes.forEach(function(d) {
             d.x0 = d.x;
             d.y0 = d.y;
         });
+
+        node.append('text')
+            .attr('x', node_radius)
+            .attr('y', -node_radius)
+            .text(function(d) { return d.name });
 
         function update(source) {
             nodes = cluster.nodes(data);
@@ -180,6 +234,7 @@ function chart(data) {
                 })
                 .attr('stroke-width', line_stroke_width)
                 .attr('stroke', line_stroke)
+                .attr('opacity', .2)
                 .transition()
                 .attr('d', diagonal);
 
@@ -208,6 +263,11 @@ function chart(data) {
                 .attr('stroke', nodestroke)
                 .attr('fill', nodeFill)
                 .attr('stroke-width', 3);
+
+            nodeEnter.append('text')
+                .attr('x', node_radius)
+                .attr('y', -node_radius)
+                .text(function(d) { return d.name });
 
             var nodeUpdate = node.transition()
                 .duration(duration_ms)
